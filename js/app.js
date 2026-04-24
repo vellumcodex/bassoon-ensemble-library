@@ -325,6 +325,11 @@ function render() {
 
 function imageTag(url, small, title) {
   if (url && /^https?:\/\//i.test(url)) return '<img src="'+escapeHTML(url)+'" alt="" loading="lazy">';
+  if (url && /no\s*image/i.test(url)) {
+    return small
+      ? '<div class="row-cover-noimage">No<br>Image</div>'
+      : '<div class="card-cover-noimage">No Image</div>';
+  }
   return small
     ? '<div class="row-cover-placeholder">—</div>'
     : '<div class="card-cover-placeholder">'+(escapeHTML((title||'').slice(0,1)) || '♪')+'</div>';
@@ -402,7 +407,7 @@ function openDetail(r) {
   $('#detail-body').innerHTML =
     '<div class="detail-ensemble-line">'+el+'</div>' +
     '<h2 class="detail-title">'+(escapeHTML(r.title)||'—')+'</h2>' +
-    (r.image && /^https?:\/\//i.test(r.image) ? '<div class="detail-cover"><img src="'+escapeHTML(r.image)+'" alt=""></div>' : '') +
+    (r.image && /^https?:\/\//i.test(r.image) ? '<div class="detail-cover"><img src="'+escapeHTML(r.image)+'" alt=""></div>' : (r.image && /no\s*image/i.test(r.image) ? '<div class="detail-cover detail-cover-noimage">No Image</div>' : '')) +
     (r.composer ? '<div class="detail-section"><div class="detail-section-label">作曲 Composer</div><p class="detail-person">'+escapeHTML(r.composer)+(cD?'<span class="detail-person-dates">'+escapeHTML(cD)+'</span>':'')+'</p></div>' : '') +
     (r.arranger ? '<div class="detail-section"><div class="detail-section-label">編曲 Arranger</div><p class="detail-person">'+escapeHTML(r.arranger)+(aD?'<span class="detail-person-dates">'+escapeHTML(aD)+'</span>':'')+'</p></div>' : '') +
     (mr.length ? '<div class="detail-section"><div class="detail-section-label">出版情報 Publication</div><dl class="detail-grid">'+mr.map(function(kv){return '<dt>'+kv[0]+'</dt><dd>'+kv[1]+'</dd>';}).join('')+'</dl></div>' : '') +
