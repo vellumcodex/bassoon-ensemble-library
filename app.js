@@ -1,5 +1,5 @@
 /* =============================================================
-   Bassoon Ensemble Library — App logic
+   Bassoon Ensemble Library — App logic 
    ============================================================= */
 
 'use strict';
