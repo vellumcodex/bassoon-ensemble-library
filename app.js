@@ -13,8 +13,8 @@ var CONFIG = {
   // Optional client-side password gate.
   // NOTE: UI obscurance only — the xlsx file itself is still downloadable via direct URL.
   // For real privacy use Private GitHub Pages (GitHub Pro) or Cloudflare Access.
-  requirePassword: false,
-  password: '',
+  requirePassword: true,
+  password: 'fagott2026',
   authStorageKey: 'bel_auth_v1'
 };
 
