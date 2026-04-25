@@ -7,9 +7,6 @@
 var CONFIG = {
   dataPath: 'data/ensemble-scores.xlsx',
   sheetName: 'Scores',
-  // Optional client-side password gate.
-  // NOTE: UI obscurance only — the xlsx file itself is still downloadable via direct URL.
-  // For real privacy use Private GitHub Pages (GitHub Pro) or Cloudflare Access.
   requirePassword: true,
   password: 'bel2026',
   authStorageKey: 'bel_auth_v1'
@@ -78,9 +75,8 @@ function initAuth() {
       err.hidden = false;
       input.value = '';
       input.focus();
-      // Trigger shake animation
       box.classList.remove('shake');
-      void box.offsetWidth; // force reflow
+      void box.offsetWidth;
       box.classList.add('shake');
     }
   });
@@ -174,8 +170,11 @@ function buildFilters() {
   var sk = uniqueSorted(state.all.map(function(r){return r.skill;}));
   renderChipFilter($('#filter-skill'), sk, countBy('skill'), 'skill');
 
+  // Publisher: chip 形式に統一（旧 checkbox から変更）
   var pb = uniqueSorted(state.all.map(function(r){return r.publisher;}));
-  renderCheckboxFilter($('#filter-publisher'), pb, countBy('publisher'), 'publisher');
+  var pubEl = $('#filter-publisher');
+  pubEl.className = 'chip-group'; // override legacy 'checkbox-group' class in HTML
+  renderChipFilter(pubEl, pb, countBy('publisher'), 'publisher');
 }
 
 function renderChipFilter(container, values, counts, stateKey) {
@@ -194,27 +193,12 @@ function renderChipFilter(container, values, counts, stateKey) {
   });
 }
 
-function renderCheckboxFilter(container, values, counts, stateKey) {
-  if (!values.length) { container.innerHTML = '<p style="font-size:11px;color:var(--ink-faint);margin:0;">（該当なし）</p>'; return; }
-  container.innerHTML = values.map(function(v){
-    return '<label class="checkbox-item"><input type="checkbox" value="'+escapeHTML(v)+'"><span>'+escapeHTML(v)+'</span><span class="item-count">'+(counts[v]||0)+'</span></label>';
-  }).join('');
-  container.addEventListener('change', function(e){
-    var cb = e.target;
-    if (cb.type !== 'checkbox') return;
-    var s = state.filters[stateKey];
-    if (cb.checked) s.add(cb.value); else s['delete'](cb.value);
-    applyFiltersAndRender();
-  });
-}
-
 function clearAllFilters() {
   Object.keys(state.filters).forEach(function(k){ state.filters[k].clear(); });
   state.search = '';
   $('#search-input').value = '';
   $('#search-clear').hidden = true;
   $$('.chip.active').forEach(function(c){ c.classList.remove('active'); });
-  $$('.checkbox-item input:checked').forEach(function(cb){ cb.checked = false; });
   applyFiltersAndRender();
 }
 
@@ -242,6 +226,17 @@ function bindEvents() {
   });
 
   $('#clear-filters').addEventListener('click', clearAllFilters);
+
+  // Collapse/expand filter sections (h3 click)
+  $$('.filter-section h3').forEach(function(h3) {
+    h3.addEventListener('click', function(e) {
+      // info ボタンクリック時は折りたたまない
+      if (e.target.closest('[data-skill-info]')) return;
+      var section = h3.closest('.filter-section');
+      if (section) section.classList.toggle('collapsed');
+    });
+  });
+
   $('#detail-close').addEventListener('click', closeDetail);
   $('#detail-overlay').addEventListener('click', function(e){ if (e.target.id === 'detail-overlay') closeDetail(); });
   document.addEventListener('keydown', function(e){
@@ -251,7 +246,6 @@ function bindEvents() {
     }
   });
 
-  // Skill info popover — delegated for dynamic buttons
   document.addEventListener('click', function(e){
     var btn = e.target.closest('[data-skill-info]');
     if (btn) { e.stopPropagation(); openSkillInfo(); }
