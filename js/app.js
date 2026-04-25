@@ -39,7 +39,7 @@ var COLUMNS = {
 var state = {
   all: [],
   filtered: [],
-  filters: { ensemble:new Set(), players:new Set(), skill:new Set(), publisher:new Set() },
+  filters: { ensemble:new Set(), players:new Set(), composer:new Set(), skill:new Set(), publisher:new Set() },
   search: '',
   sort: 'title',
   view: 'table'
@@ -161,11 +161,14 @@ function countBy(field) {
 }
 
 function buildFilters() {
+  var ppl = uniqueSorted(state.all.map(function(r){return r.people;})).sort(function(a,b){return Number(a)-Number(b);});
+  renderChipFilter($('#filter-players'), ppl, countBy('people'), 'players');
+
   var ens = uniqueSorted(state.all.map(function(r){return r.ensemble;}));
   renderChipFilter($('#filter-ensemble'), ens, countBy('ensemble'), 'ensemble');
 
-  var ppl = uniqueSorted(state.all.map(function(r){return r.people;})).sort(function(a,b){return Number(a)-Number(b);});
-  renderChipFilter($('#filter-players'), ppl, countBy('people'), 'players');
+  var cmp = uniqueSorted(state.all.map(function(r){return r.composer;}));
+  renderChipFilter($('#filter-composer'), cmp, countBy('composer'), 'composer');
 
   var sk = uniqueSorted(state.all.map(function(r){return r.skill;}));
   renderChipFilter($('#filter-skill'), sk, countBy('skill'), 'skill');
@@ -261,6 +264,7 @@ function applyFiltersAndRender() {
   state.filtered = state.all.filter(function(r){
     if (f.ensemble.size && !f.ensemble.has(r.ensemble)) return false;
     if (f.players.size && !f.players.has(r.people)) return false;
+    if (f.composer.size && !f.composer.has(r.composer)) return false;
     if (f.skill.size && !f.skill.has(r.skill)) return false;
     if (f.publisher.size && !f.publisher.has(r.publisher)) return false;
     if (search) {
