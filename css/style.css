@@ -147,10 +147,6 @@ input, select { font-family:inherit; color:inherit; background:transparent; bord
   40%, 80% { transform: translateX(9px); }
 }
 .auth-box.shake { animation: auth-shake 0.42s ease-in-out; }
-@media (max-width: 480px) {
-  .auth-box { padding: 36px 28px 32px; }
-  .auth-title { font-size: 22px; }
-}
 
 /* ==== Main App ==== */
 .app { min-height:100vh; display:flex; flex-direction:column; }
@@ -214,7 +210,8 @@ input, select { font-family:inherit; color:inherit; background:transparent; bord
 .chip .chip-count { margin-left:6px; font-size:10px; color:var(--ink-faint); font-variant-numeric:tabular-nums; }
 .chip.active .chip-count { color:var(--accent-pale); }
 
-.checkbox-group { display:flex; flex-direction:column; gap:6px; max-height:240px; overflow-y:auto; padding-right:4px; }
+/* Publisher: 内部スクロール無し、自然に縦に伸びる */
+.checkbox-group { display:flex; flex-direction:column; gap:6px; }
 .checkbox-item { display:flex; align-items:center; gap:8px; font-size:12px; cursor:pointer; padding:3px 0; color:var(--ink-soft); }
 .checkbox-item:hover { color:var(--ink); }
 .checkbox-item input { appearance:none; width:14px; height:14px; border:1px solid var(--rule); background:var(--panel); display:inline-block; flex-shrink:0; position:relative; cursor:pointer; }
@@ -314,12 +311,79 @@ input, select { font-family:inherit; color:inherit; background:transparent; bord
 .site-footer p { margin: 0; }
 .site-footer code { font-family:var(--mono); background:var(--panel); padding:2px 6px; border:1px solid var(--rule-soft); }
 
-@media (max-width:960px){
-  .header-inner { flex-direction:column; align-items:flex-start; gap:16px; }
-  .main { grid-template-columns:1fr; padding:20px; gap:24px; }
-  .filters { position:static; border:1px solid var(--rule); background:var(--panel); padding:20px; }
-  .toolbar-inner { flex-direction:column; align-items:stretch; gap:10px; padding:12px 20px; }
-  .search-wrap { max-width:100%; }
-  .detail-panel { width:100vw; }
-  .scores-table { min-width:800px; }
+/* ==== Responsive: Tablet (1024px and below) ==== */
+@media (max-width: 1024px) {
+  .header-inner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 32px 24px;
+  }
+  .header-meta {
+    width: 100%;
+    gap: 24px;
+  }
+  .meta-item { align-items: flex-start; }
+  .brand-title { font-size: 28px; }
+
+  .toolbar-inner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px 24px;
+  }
+  .search-wrap { max-width: 100%; }
+  .toolbar-right { justify-content: space-between; }
+
+  .main {
+    grid-template-columns: 1fr;
+    padding: 24px;
+    gap: 24px;
+  }
+  .filters {
+    position: static;
+    border: 1px solid var(--rule);
+    background: var(--panel);
+    padding: 20px;
+  }
+
+  .detail-panel { width: 100vw; }
+  .scores-table { min-width: 800px; }
+
+  .view-card { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+}
+
+/* ==== Responsive: Phone (600px and below) ==== */
+@media (max-width: 600px) {
+  html, body { font-size: 13px; }
+
+  .header-inner { padding: 24px 16px; }
+  .brand-title { font-size: 24px; line-height: 1.15; }
+  .brand-sub { font-size: 11px; letter-spacing: 0.14em; }
+  .header-meta { gap: 20px; }
+  .meta-value { font-size: 22px; }
+  .meta-label { font-size: 9px; }
+
+  .toolbar-inner { padding: 10px 16px; }
+  .toolbar-right { gap: 12px; flex-wrap: wrap; }
+  .sort-wrap { flex: 1; min-width: 0; }
+  #sort-select { width: 100%; }
+
+  .main { padding: 16px; gap: 18px; }
+  .filters { padding: 16px; }
+  .filter-section { padding-bottom: 16px; margin-bottom: 16px; }
+  .filter-section h2 { font-size: 16px; }
+
+  .view-card { grid-template-columns: 1fr; gap: 14px; }
+  .card-body { padding: 16px; }
+
+  .detail-body { padding: 48px 20px 32px; }
+  .detail-title { font-size: 26px; margin-bottom: 22px; }
+  .detail-grid { grid-template-columns: 90px 1fr; gap: 8px 12px; }
+  .detail-section { margin-bottom: 22px; padding-bottom: 22px; }
+
+  /* Auth gate: 小画面用調整 */
+  .auth-box { padding: 36px 26px 30px; }
+  .auth-title { font-size: 21px; }
+  .auth-sub { font-size: 10px; margin-bottom: 26px; }
 }
