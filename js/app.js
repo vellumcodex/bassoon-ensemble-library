@@ -170,11 +170,9 @@ function buildFilters() {
   var sk = uniqueSorted(state.all.map(function(r){return r.skill;}));
   renderChipFilter($('#filter-skill'), sk, countBy('skill'), 'skill');
 
-  // Publisher: chip 形式に統一（旧 checkbox から変更）
+  // Publisher: 他と同じ chip 統一
   var pb = uniqueSorted(state.all.map(function(r){return r.publisher;}));
-  var pubEl = $('#filter-publisher');
-  pubEl.className = 'chip-group'; // override legacy 'checkbox-group' class in HTML
-  renderChipFilter(pubEl, pb, countBy('publisher'), 'publisher');
+  renderChipFilter($('#filter-publisher'), pb, countBy('publisher'), 'publisher');
 }
 
 function renderChipFilter(container, values, counts, stateKey) {
@@ -227,10 +225,10 @@ function bindEvents() {
 
   $('#clear-filters').addEventListener('click', clearAllFilters);
 
-  // Collapse/expand filter sections (h3 click)
+  // 見出しクリックで折りたたみ切替
   $$('.filter-section h3').forEach(function(h3) {
     h3.addEventListener('click', function(e) {
-      // info ボタンクリック時は折りたたまない
+      // i ボタンクリック時は折りたたまない
       if (e.target.closest('[data-skill-info]')) return;
       var section = h3.closest('.filter-section');
       if (section) section.classList.toggle('collapsed');
