@@ -1,49 +1,44 @@
 /* =============================================================
    Bassoon Ensemble Library — App logic
-   ============================================================= */
-
+============================================================= */
 'use strict';
 
 // ---------- Configuration ---------------------------------------
-
 var CONFIG = {
   dataPath: 'data/ensemble-scores.xlsx',
   sheetName: 'Scores',
-
   // Optional client-side password gate.
   // NOTE: UI obscurance only — the xlsx file itself is still downloadable via direct URL.
   // For real privacy use Private GitHub Pages (GitHub Pro) or Cloudflare Access.
   requirePassword: true,
-  password: 'fagotto2025',
+  password: 'bel2026',
   authStorageKey: 'bel_auth_v1'
 };
 
 // ---------- Column mapping --------------------------------------
-
 var COLUMNS = {
-  people:       '編成人数',
-  ensemble:     '編成',
-  title:        'タイトル',
-  composer:     '作曲者',
+  people: '編成人数',
+  ensemble: '編成',
+  title: 'タイトル',
+  composer: '作曲者',
   composerBorn: '作曲者_生年',
   composerDied: '作曲者_没年',
-  arranger:     '編曲者',
+  arranger: '編曲者',
   arrangerBorn: '編曲者_生年',
   arrangerDied: '編曲者_没年',
-  publisher:    '出版社',
-  pubNumber:    '出版番号',
-  pubYear:      '出版年',
-  ismn:         'ISMN',
-  isbn:         'ISBN',
-  duration:     '時間',
-  description:  '説明',
-  program:      '曲目',
-  skill:        'スキルレベル',
-  image:        '画像'
+  publisher: '出版社',
+  pubNumber: '出版番号',
+  pubYear: '出版年',
+  ismn: 'ISMN',
+  isbn: 'ISBN',
+  duration: '時間',
+  description: '説明',
+  program: '曲目',
+  skill: 'スキルレベル',
+  image: '画像'
 };
 
 // ---------- State ------------------------------------------------
-
 var state = {
   all: [],
   filtered: [],
@@ -54,7 +49,6 @@ var state = {
 };
 
 // ---------- Utilities -------------------------------------------
-
 function $(s, r) { return (r||document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r||document).querySelectorAll(s)); }
 function normalize(v) { if (v===null||v===undefined) return ''; return String(v).trim(); }
@@ -64,17 +58,18 @@ function formatDates(b,d) { var y1=parseYear(b), y2=parseYear(d); if(y1&&y2) ret
 function debounce(fn, w) { var t; return function(){ var a=arguments, ctx=this; clearTimeout(t); t=setTimeout(function(){fn.apply(ctx,a);}, w||200); }; }
 
 // ---------- Auth gate -------------------------------------------
-
 function initAuth() {
   if (!CONFIG.requirePassword) { showApp(); return; }
   var granted = sessionStorage.getItem(CONFIG.authStorageKey) === 'ok';
   if (granted) { showApp(); return; }
+
   var gate = $('#auth-gate');
   gate.hidden = false;
   $('#auth-form').addEventListener('submit', function(e) {
     e.preventDefault();
     var input = $('#auth-input');
     var err = $('#auth-error');
+    var box = $('.auth-box');
     if (input.value === CONFIG.password) {
       sessionStorage.setItem(CONFIG.authStorageKey, 'ok');
       gate.hidden = true;
@@ -83,6 +78,10 @@ function initAuth() {
       err.hidden = false;
       input.value = '';
       input.focus();
+      // Trigger shake animation
+      box.classList.remove('shake');
+      void box.offsetWidth; // force reflow
+      box.classList.add('shake');
     }
   });
 }
@@ -90,7 +89,6 @@ function initAuth() {
 function showApp() { $('#app').hidden = false; loadData(); }
 
 // ---------- Data loading ----------------------------------------
-
 function loadData() {
   fetch(CONFIG.dataPath)
     .then(function(res) {
@@ -115,25 +113,25 @@ function loadData() {
 function normalizeRow(r, i) {
   return {
     _id: i,
-    people:       normalize(r[COLUMNS.people]),
-    ensemble:     normalize(r[COLUMNS.ensemble]),
-    title:        normalize(r[COLUMNS.title]),
-    composer:     normalize(r[COLUMNS.composer]),
+    people: normalize(r[COLUMNS.people]),
+    ensemble: normalize(r[COLUMNS.ensemble]),
+    title: normalize(r[COLUMNS.title]),
+    composer: normalize(r[COLUMNS.composer]),
     composerBorn: normalize(r[COLUMNS.composerBorn]),
     composerDied: normalize(r[COLUMNS.composerDied]),
-    arranger:     normalize(r[COLUMNS.arranger]),
+    arranger: normalize(r[COLUMNS.arranger]),
     arrangerBorn: normalize(r[COLUMNS.arrangerBorn]),
     arrangerDied: normalize(r[COLUMNS.arrangerDied]),
-    publisher:    normalize(r[COLUMNS.publisher]),
-    pubNumber:    normalize(r[COLUMNS.pubNumber]),
-    pubYear:      normalize(r[COLUMNS.pubYear]),
-    ismn:         normalize(r[COLUMNS.ismn]),
-    isbn:         normalize(r[COLUMNS.isbn]),
-    duration:     normalize(r[COLUMNS.duration]),
-    description:  normalize(r[COLUMNS.description]),
-    program:      normalize(r[COLUMNS.program]),
-    skill:        normalize(r[COLUMNS.skill]),
-    image:        normalize(r[COLUMNS.image])
+    publisher: normalize(r[COLUMNS.publisher]),
+    pubNumber: normalize(r[COLUMNS.pubNumber]),
+    pubYear: normalize(r[COLUMNS.pubYear]),
+    ismn: normalize(r[COLUMNS.ismn]),
+    isbn: normalize(r[COLUMNS.isbn]),
+    duration: normalize(r[COLUMNS.duration]),
+    description: normalize(r[COLUMNS.description]),
+    program: normalize(r[COLUMNS.program]),
+    skill: normalize(r[COLUMNS.skill]),
+    image: normalize(r[COLUMNS.image])
   };
 }
 
@@ -153,7 +151,6 @@ function showError(msg) {
 }
 
 // ---------- Filter UI -------------------------------------------
-
 function uniqueSorted(vs) {
   var set = {}, out = [];
   for (var i=0; i<vs.length; i++) { var v=vs[i]; if (v!=='' && !set[v]) { set[v]=1; out.push(v); } }
@@ -170,10 +167,13 @@ function countBy(field) {
 function buildFilters() {
   var ens = uniqueSorted(state.all.map(function(r){return r.ensemble;}));
   renderChipFilter($('#filter-ensemble'), ens, countBy('ensemble'), 'ensemble');
+
   var ppl = uniqueSorted(state.all.map(function(r){return r.people;})).sort(function(a,b){return Number(a)-Number(b);});
   renderChipFilter($('#filter-players'), ppl, countBy('people'), 'players');
+
   var sk = uniqueSorted(state.all.map(function(r){return r.skill;}));
   renderChipFilter($('#filter-skill'), sk, countBy('skill'), 'skill');
+
   var pb = uniqueSorted(state.all.map(function(r){return r.publisher;}));
   renderCheckboxFilter($('#filter-publisher'), pb, countBy('publisher'), 'publisher');
 }
@@ -219,7 +219,6 @@ function clearAllFilters() {
 }
 
 // ---------- Events ----------------------------------------------
-
 function bindEvents() {
   var si = $('#search-input'), sc = $('#search-clear');
   si.addEventListener('input', debounce(function(e){
@@ -230,7 +229,9 @@ function bindEvents() {
   sc.addEventListener('click', function(){
     si.value = ''; state.search = ''; sc.hidden = true; applyFiltersAndRender(); si.focus();
   });
+
   $('#sort-select').addEventListener('change', function(e){ state.sort = e.target.value; applyFiltersAndRender(); });
+
   $$('.view-btn').forEach(function(b){
     b.addEventListener('click', function(){
       $$('.view-btn').forEach(function(x){ x.classList.remove('active'); });
@@ -239,6 +240,7 @@ function bindEvents() {
       render();
     });
   });
+
   $('#clear-filters').addEventListener('click', clearAllFilters);
   $('#detail-close').addEventListener('click', closeDetail);
   $('#detail-overlay').addEventListener('click', function(e){ if (e.target.id === 'detail-overlay') closeDetail(); });
@@ -262,7 +264,6 @@ function openSkillInfo() { $('#skill-info-overlay').hidden = false; }
 function closeSkillInfo() { $('#skill-info-overlay').hidden = true; }
 
 // ---------- Filter / sort / render ------------------------------
-
 function applyFiltersAndRender() {
   var f = state.filters, search = state.search;
   state.filtered = state.all.filter(function(r){
@@ -347,7 +348,7 @@ function renderTable() {
       '<td><div class="row-arranger">'+(escapeHTML(r.arranger)||'—')+'</div></td>' +
       '<td><div class="row-publisher">'+(escapeHTML(r.publisher)||'—')+'</div>'+(r.pubNumber?'<div class="row-pub-number">'+escapeHTML(r.pubNumber)+'</div>':'')+'</td>' +
       '<td>'+(r.skill?'<span class="row-skill">'+escapeHTML(r.skill)+'</span>':'')+'</td>' +
-    '</tr>';
+      '</tr>';
   }).join('');
   $$('tr', tb).forEach(function(tr){
     tr.addEventListener('click', function(){
@@ -363,17 +364,17 @@ function renderCards() {
     return '<article class="card" data-id="'+r._id+'">' +
       '<div class="card-cover">'+imageTag(r.image,false,r.title)+(r.ensemble?'<div class="card-cover-ensemble">'+escapeHTML(r.ensemble)+'</div>':'')+'</div>' +
       '<div class="card-body">' +
-        '<h3 class="card-title">'+(escapeHTML(r.title)||'—')+'</h3>' +
-        '<div class="card-meta">' +
-          (r.composer?'<div><span class="card-meta-label">Comp.</span>'+escapeHTML(r.composer)+'</div>':'') +
-          (r.arranger?'<div><span class="card-meta-label">Arr.</span>'+escapeHTML(r.arranger)+'</div>':'') +
-        '</div>' +
-        '<div class="card-footer">' +
-          '<div class="card-publisher">'+(escapeHTML(r.publisher)||'')+'</div>' +
-          (r.skill?'<span class="card-skill">'+escapeHTML(r.skill)+'</span>':'') +
-        '</div>' +
+      '<h3 class="card-title">'+(escapeHTML(r.title)||'—')+'</h3>' +
+      '<div class="card-meta">' +
+      (r.composer?'<div><span class="card-meta-label">Comp.</span>'+escapeHTML(r.composer)+'</div>':'') +
+      (r.arranger?'<div><span class="card-meta-label">Arr.</span>'+escapeHTML(r.arranger)+'</div>':'') +
       '</div>' +
-    '</article>';
+      '<div class="card-footer">' +
+      '<div class="card-publisher">'+(escapeHTML(r.publisher)||'')+'</div>' +
+      (r.skill?'<span class="card-skill">'+escapeHTML(r.skill)+'</span>':'') +
+      '</div>' +
+      '</div>' +
+      '</article>';
   }).join('');
   $$('.card', c).forEach(function(el){
     el.addEventListener('click', function(){
@@ -384,7 +385,6 @@ function renderCards() {
 }
 
 // ---------- Detail panel ----------------------------------------
-
 function openDetail(r) {
   if (!r) return;
   var cD = formatDates(r.composerBorn, r.composerDied);
@@ -424,7 +424,6 @@ function closeDetail() {
 }
 
 // ---------- Boot ------------------------------------------------
-
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initAuth);
 } else {
