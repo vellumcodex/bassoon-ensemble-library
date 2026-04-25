@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="ファゴットアンサンブル楽譜ライブラリ">
+<title>Bassoon Ensemble Library</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- Optional password gate -->
+<div id="auth-gate" class="auth-gate" hidden>
+  <div class="auth-box">
+    <div class="auth-mark"><span>Bassoon Ensemble</span></div>
+    <h1 class="auth-title">Bassoon Ensemble Library</h1>
+    <p class="auth-sub">ファゴットアンサンブル 楽譜データベース</p>
+    <form id="auth-form" class="auth-form">
+      <div class="auth-field">
+        <label class="auth-label" for="auth-input">Password</label>
+        <input type="password" id="auth-input" autocomplete="off" autofocus>
+      </div>
+      <button type="submit">Enter</button>
+    </form>
+    <p id="auth-error" class="auth-error" hidden>パスワードが違います</p>
+  </div>
+</div>
+
+<!-- Main app -->
+<div id="app" class="app" hidden>
+
+<header class="site-header">
+<div class="header-inner">
+<div class="brand">
+<h1 class="brand-title">Bassoon Ensemble Library</h1>
+<p class="brand-sub">ファゴットアンサンブル 楽譜データベース</p>
+</div>
+<div class="header-meta">
+<div class="meta-item"><span class="meta-label">Records</span><span class="meta-value" id="total-count">—</span></div>
+<div class="meta-item"><span class="meta-label">Showing</span><span class="meta-value" id="showing-count">—</span></div>
+</div>
+</div>
+</header>
+
+<div class="toolbar">
+<div class="toolbar-inner">
+<div class="search-wrap">
+<svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+<circle cx="11" cy="11" r="7"/>
+<line x1="21" y1="21" x2="16.5" y2="16.5"/>
+</svg>
+<input type="search" id="search-input" placeholder="タイトル・作曲者・編曲者・出版社で検索…" autocomplete="off">
+<button id="search-clear" class="search-clear" hidden aria-label="Clear">×</button>
+</div>
+<div class="toolbar-right">
+<label class="sort-wrap">
+<span class="sort-label">Sort</span>
+<select id="sort-select">
+<option value="title">タイトル (A→Z)</option>
+<option value="title-desc">タイトル (Z→A)</option>
+<option value="composer">作曲者</option>
+<option value="arranger">編曲者</option>
+<option value="publisher">出版社</option>
+<option value="year">出版年 (新しい順)</option>
+<option value="year-asc">出版年 (古い順)</option>
+</select>
+</label>
+<div class="view-toggle" role="tablist">
+<button class="view-btn active" data-view="table" aria-label="Table view">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="3" y1="5" x2="21" y2="5"/><line x1="3" y1="19" x2="21" y2="19"/></svg>
+</button>
+<button class="view-btn" data-view="card" aria-label="Card view">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+</button>
+</div>
+</div>
+</div>
+</div>
+
+<main class="main">
+<aside class="filters">
+<div class="filter-section">
+<div class="filter-head">
+<h2>Filters</h2>
+<button id="clear-filters" class="clear-link">Clear all</button>
+</div>
+</div>
+<div class="filter-section"><h3>編成 / Ensemble</h3><div id="filter-ensemble" class="chip-group"></div></div>
+<div class="filter-section"><h3>人数 / Players</h3><div id="filter-players" class="chip-group"></div></div>
+<div class="filter-section"><h3>スキルレベル / Skill Level <button class="skill-info-btn" data-skill-info aria-label="スキルレベルについて">i</button></h3><div id="filter-skill" class="chip-group"></div></div>
+<div class="filter-section"><h3>出版社 / Publisher</h3><div id="filter-publisher" class="checkbox-group"></div></div>
+</aside>
+
+<section class="results">
+<div id="loading" class="loading">
+<div class="loading-spinner"></div>
+<p>Loading scores…</p>
+</div>
+<div id="empty" class="empty" hidden>
+<p class="empty-title">No results</p>
+<p class="empty-sub">検索条件を変更してください</p>
+</div>
+<div id="error-state" class="error-state" hidden>
+<p class="empty-title">Loading error</p>
+<p class="empty-sub" id="error-message"></p>
+</div>
+<div id="view-table" class="view-table">
+<table class="scores-table">
+<thead>
+<tr>
+<th class="col-cover"></th>
+<th>タイトル</th>
+<th>編成</th>
+<th class="col-people">人数</th>
+<th>作曲者</th>
+<th>編曲者</th>
+<th>出版社</th>
+<th class="col-skill">スキル<button class="skill-info-btn" data-skill-info aria-label="スキルレベルについて">i</button></th>
+</tr>
+</thead>
+<tbody id="table-body"></tbody>
+</table>
+</div>
+<div id="view-card" class="view-card" hidden></div>
+</section>
+</main>
+
+<div id="detail-overlay" class="detail-overlay" hidden>
+<div class="detail-panel">
+<button id="detail-close" class="detail-close" aria-label="Close">×</button>
+<div id="detail-body" class="detail-body"></div>
+</div>
+</div>
+
+<div id="skill-info-overlay" class="skill-info-overlay" hidden>
+<div class="skill-info-box">
+<button id="skill-info-close" class="skill-info-close" aria-label="Close">×</button>
+<h3 class="skill-info-title">スキルレベルについて</h3>
+<p class="skill-info-sub">ABRSMグレードに準じた目安です</p>
+<dl class="skill-info-grades">
+<dt>A</dt><dd>グレード 1〜2</dd>
+<dt>B</dt><dd>グレード 3〜4</dd>
+<dt>C</dt><dd>グレード 5</dd>
+<dt>D</dt><dd>グレード 6〜7</dd>
+<dt>E</dt><dd>グレード 8 以上</dd>
+</dl>
+<p class="skill-info-note">ABRSM（英国王立音楽検定）は、1〜8のグレードで演奏技術を評価する国際的な音楽検定制度です。</p>
+</div>
+</div>
+
+<footer class="site-footer">
+<p>© Bassoon Ensemble Library</p>
+</footer>
+
+</div>
+
+<script src="js/app.js"></script>
+</body>
+</html>
