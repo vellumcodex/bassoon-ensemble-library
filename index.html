@@ -6,7 +6,7 @@
 <meta name="description" content="ファゴットアンサンブル楽譜ライブラリ">
 <title>Bassoon Ensemble Library</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link rel="stylesheet" href="css/style.css?v=4">
+<link rel="stylesheet" href="css/style.css?v=5">
 </head>
 <body>
 
@@ -134,6 +134,16 @@
 </div>
 </div>
 
+<div id="lightbox-overlay" class="lightbox-overlay" hidden>
+<button id="lightbox-close" class="lightbox-close" aria-label="Close">×</button>
+<button id="lightbox-prev" class="lightbox-nav lightbox-prev" aria-label="Previous">‹</button>
+<button id="lightbox-next" class="lightbox-nav lightbox-next" aria-label="Next">›</button>
+<div class="lightbox-stage">
+<img id="lightbox-img" alt="">
+</div>
+<div id="lightbox-counter" class="lightbox-counter"></div>
+</div>
+
 <div id="skill-info-overlay" class="skill-info-overlay" hidden>
 <div class="skill-info-box">
 <button id="skill-info-close" class="skill-info-close" aria-label="Close">×</button>
@@ -156,6 +166,6 @@
 
 </div>
 
-<script src="js/app.js?v=4"></script>
+<script src="js/app.js?v=5"></script>
 </body>
 </html>
