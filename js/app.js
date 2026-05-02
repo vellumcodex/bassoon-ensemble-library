@@ -32,7 +32,8 @@ var COLUMNS = {
   description: '説明',
   program: '曲目',
   skill: 'スキルレベル',
-  image: '画像'
+  // 画像列は 画像1〜画像10。旧「画像」列も後方互換でフォールバック取得する
+  images: ['画像1','画像2','画像3','画像4','画像5','画像6','画像7','画像8','画像9','画像10']
 };
 
 // ---------- State ------------------------------------------------
@@ -127,9 +128,28 @@ function normalizeRow(r, i) {
     description: normalize(r[COLUMNS.description]),
     program: normalize(r[COLUMNS.program]),
     skill: normalize(r[COLUMNS.skill]),
-    image: normalize(r[COLUMNS.image])
+    images: extractImages(r)
   };
 }
+
+// 画像URLを最大10枚まで配列に集める
+// 「画像1」〜「画像10」を順に取得、空でないものを残す
+// 旧「画像」列のみのデータも後方互換でサポート
+function extractImages(row) {
+  var arr = [];
+  for (var i = 0; i < COLUMNS.images.length; i++) {
+    var v = normalize(row[COLUMNS.images[i]]);
+    if (v) arr.push(v);
+  }
+  if (arr.length === 0) {
+    var legacy = normalize(row['画像']);
+    if (legacy) arr.push(legacy);
+  }
+  return arr;
+}
+
+function isImageUrl(s) { return /^https?:\/\//i.test(s); }
+function isNoImage(s) { return /no\s*image/i.test(s); }
 
 function onDataReady() {
   $('#loading').hidden = true;
@@ -240,7 +260,22 @@ function bindEvents() {
 
   $('#detail-close').addEventListener('click', closeDetail);
   $('#detail-overlay').addEventListener('click', function(e){ if (e.target.id === 'detail-overlay') closeDetail(); });
+
+  // Lightbox
+  $('#lightbox-close').addEventListener('click', closeLightbox);
+  $('#lightbox-prev').addEventListener('click', function(e){ e.stopPropagation(); lightboxPrev(); });
+  $('#lightbox-next').addEventListener('click', function(e){ e.stopPropagation(); lightboxNext(); });
+  $('#lightbox-overlay').addEventListener('click', function(e){
+    if (e.target.id === 'lightbox-overlay' || e.target.classList.contains('lightbox-stage')) closeLightbox();
+  });
+
   document.addEventListener('keydown', function(e){
+    if (!$('#lightbox-overlay').hidden) {
+      if (e.key === 'Escape') closeLightbox();
+      else if (e.key === 'ArrowLeft') lightboxPrev();
+      else if (e.key === 'ArrowRight') lightboxNext();
+      return;
+    }
     if (e.key === 'Escape') {
       if (!$('#skill-info-overlay').hidden) closeSkillInfo();
       else if (!$('#detail-overlay').hidden) closeDetail();
@@ -336,7 +371,7 @@ function renderTable() {
   var tb = $('#table-body');
   tb.innerHTML = state.filtered.map(function(r){
     return '<tr data-id="'+r._id+'">' +
-      '<td><div class="row-cover">'+imageTag(r.image,true)+'</div></td>' +
+      '<td><div class="row-cover">'+imageTag(r.images[0]||'',true)+'</div></td>' +
       '<td><div class="row-title">'+(escapeHTML(r.title)||'—')+'</div>'+(r.duration?'<div class="row-subtitle">'+escapeHTML(r.duration)+'</div>':'')+'</td>' +
       '<td>'+(r.ensemble?'<span class="row-ensemble">'+escapeHTML(r.ensemble)+'</span>':'')+'</td>' +
       '<td><div class="row-people">'+(escapeHTML(r.people)||'—')+'</div></td>' +
@@ -358,7 +393,7 @@ function renderCards() {
   var c = $('#view-card');
   c.innerHTML = state.filtered.map(function(r){
     return '<article class="card" data-id="'+r._id+'">' +
-      '<div class="card-cover">'+imageTag(r.image,false,r.title)+(r.ensemble?'<div class="card-cover-ensemble">'+escapeHTML(r.ensemble)+'</div>':'')+'</div>' +
+      '<div class="card-cover">'+imageTag(r.images[0]||'',false,r.title)+(r.ensemble?'<div class="card-cover-ensemble">'+escapeHTML(r.ensemble)+'</div>':'')+'</div>' +
       '<div class="card-body">' +
       '<h3 class="card-title">'+(escapeHTML(r.title)||'—')+'</h3>' +
       '<div class="card-meta">' +
@@ -403,7 +438,7 @@ function openDetail(r) {
   $('#detail-body').innerHTML =
     '<div class="detail-ensemble-line">'+el+'</div>' +
     '<h2 class="detail-title">'+(escapeHTML(r.title)||'—')+'</h2>' +
-    (r.image && /^https?:\/\//i.test(r.image) ? '<div class="detail-cover"><img src="'+escapeHTML(r.image)+'" alt=""></div>' : (r.image && /no\s*image/i.test(r.image) ? '<div class="detail-cover detail-cover-noimage">No Image</div>' : '')) +
+    buildGalleryHTML(r) +
     (r.composer ? '<div class="detail-section"><div class="detail-section-label">作曲 Composer</div><p class="detail-person">'+escapeHTML(r.composer)+(cD?'<span class="detail-person-dates">'+escapeHTML(cD)+'</span>':'')+'</p></div>' : '') +
     (r.arranger ? '<div class="detail-section"><div class="detail-section-label">編曲 Arranger</div><p class="detail-person">'+escapeHTML(r.arranger)+(aD?'<span class="detail-person-dates">'+escapeHTML(aD)+'</span>':'')+'</p></div>' : '') +
     (mr.length ? '<div class="detail-section"><div class="detail-section-label">出版情報 Publication</div><dl class="detail-grid">'+mr.map(function(kv){return '<dt>'+kv[0]+'</dt><dd>'+kv[1]+'</dd>';}).join('')+'</dl></div>' : '') +
@@ -412,6 +447,103 @@ function openDetail(r) {
 
   $('#detail-overlay').hidden = false;
   document.body.style.overflow = 'hidden';
+
+  // ギャラリー初期化
+  initGallery(r);
+}
+
+// ---------- Gallery (multiple images) ---------------------------
+function buildGalleryHTML(r) {
+  var imgs = (r.images || []).filter(isImageUrl);
+  var hasNoImageText = (r.images || []).some(isNoImage);
+
+  if (imgs.length === 0) {
+    if (hasNoImageText) {
+      return '<div class="detail-gallery"><div class="detail-gallery-main is-empty">No Image</div></div>';
+    }
+    return ''; // 画像情報も No Image 文言も無ければ何も出さない
+  }
+
+  var html = '<div class="detail-gallery">';
+  html += '<div class="detail-gallery-main" id="gallery-main"><img id="gallery-main-img" src="'+escapeHTML(imgs[0])+'" alt=""></div>';
+  if (imgs.length > 1) {
+    html += '<div class="detail-gallery-thumbs">';
+    for (var i = 0; i < imgs.length; i++) {
+      var url = imgs[i];
+      html += '<button class="detail-thumb'+(i===0?' active':'')+'" data-idx="'+i+'" data-url="'+escapeHTML(url)+'">' +
+              '<span class="detail-thumb-num">'+(i+1)+'</span>' +
+              '<img src="'+escapeHTML(url)+'" alt="" loading="lazy">' +
+              '</button>';
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function initGallery(r) {
+  var imgs = (r.images || []).filter(isImageUrl);
+  if (imgs.length === 0) return;
+
+  var mainEl = $('#gallery-main');
+  var mainImg = $('#gallery-main-img');
+  if (!mainEl || !mainImg) return;
+
+  // メイン画像クリック → ライトボックス
+  mainEl.addEventListener('click', function() {
+    var current = mainImg.getAttribute('src');
+    var idx = imgs.indexOf(current);
+    openLightbox(imgs, idx >= 0 ? idx : 0);
+  });
+
+  // サムネイルクリック → メイン切替
+  $$('.detail-thumb').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var url = btn.getAttribute('data-url');
+      mainImg.setAttribute('src', url);
+      $$('.detail-thumb').forEach(function(b){ b.classList.remove('active'); });
+      btn.classList.add('active');
+    });
+  });
+}
+
+// ---------- Lightbox --------------------------------------------
+var lightboxState = { images: [], index: 0 };
+
+function openLightbox(images, startIndex) {
+  lightboxState.images = images;
+  lightboxState.index = startIndex || 0;
+  updateLightbox();
+  $('#lightbox-overlay').hidden = false;
+}
+
+function closeLightbox() {
+  $('#lightbox-overlay').hidden = true;
+}
+
+function updateLightbox() {
+  var imgs = lightboxState.images;
+  var i = lightboxState.index;
+  if (!imgs.length) { closeLightbox(); return; }
+  $('#lightbox-img').setAttribute('src', imgs[i]);
+  $('#lightbox-counter').textContent = (i+1) + ' / ' + imgs.length;
+  var multi = imgs.length > 1;
+  $('#lightbox-prev').hidden = !multi;
+  $('#lightbox-next').hidden = !multi;
+}
+
+function lightboxPrev() {
+  var n = lightboxState.images.length;
+  if (!n) return;
+  lightboxState.index = (lightboxState.index - 1 + n) % n;
+  updateLightbox();
+}
+
+function lightboxNext() {
+  var n = lightboxState.images.length;
+  if (!n) return;
+  lightboxState.index = (lightboxState.index + 1) % n;
+  updateLightbox();
 }
 
 function closeDetail() {
