@@ -251,7 +251,7 @@ input, select { font-family:inherit; color:inherit; background:transparent; bord
 .detail-grid dt { color:var(--ink-muted); font-size:11px; letter-spacing:.12em; text-transform:uppercase; padding-top:2px; }
 .detail-grid dd { margin:0; font-family:var(--jp); }
 .detail-grid dd code { font-family:var(--mono); font-size:12px; background:var(--bg-alt); padding:2px 6px; }
-.detail-description { font-family:var(--jp); font-size:14px; line-height:1.7; color:var(--ink-soft); margin:0; }
+.detail-description { font-family:var(--jp); font-size:14px; line-height:1.7; color:var(--ink-soft); margin:0; white-space:pre-wrap; }
 
 /* ==== Skill info icon & popover ==== */
 .skill-info-btn { display:inline-flex; align-items:center; justify-content:center; width:14px; height:14px; border:1px solid var(--ink-muted); border-radius:50%; color:var(--ink-muted); background:transparent; cursor:pointer; font-size:9px; font-weight:700; font-family:var(--serif); line-height:1; padding:0; vertical-align:middle; margin-left:4px; transition:all 0.15s; flex-shrink:0; }
