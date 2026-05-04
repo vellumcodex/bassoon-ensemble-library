@@ -33,7 +33,9 @@ var COLUMNS = {
   program: '曲目',
   skill: 'スキルレベル',
   // 画像列は 画像1〜画像10。旧「画像」列も後方互換でフォールバック取得する
-  images: ['画像1','画像2','画像3','画像4','画像5','画像6','画像7','画像8','画像9','画像10']
+  images: ['画像1','画像2','画像3','画像4','画像5','画像6','画像7','画像8','画像9','画像10'],
+  // 動画列は 動画1〜動画5
+  videos: ['動画1','動画2','動画3','動画4','動画5']
 };
 
 // ---------- State ------------------------------------------------
@@ -128,13 +130,12 @@ function normalizeRow(r, i) {
     description: normalize(r[COLUMNS.description]),
     program: normalize(r[COLUMNS.program]),
     skill: normalize(r[COLUMNS.skill]),
-    images: extractImages(r)
+    images: extractImages(r),
+    videos: extractVideos(r)
   };
 }
 
 // 画像URLを最大10枚まで配列に集める
-// 「画像1」〜「画像10」を順に取得、空でないものを残す
-// 旧「画像」列のみのデータも後方互換でサポート
 function extractImages(row) {
   var arr = [];
   for (var i = 0; i < COLUMNS.images.length; i++) {
@@ -146,6 +147,40 @@ function extractImages(row) {
     if (legacy) arr.push(legacy);
   }
   return arr;
+}
+
+// 動画URLを最大5本まで配列に集める
+function extractVideos(row) {
+  var arr = [];
+  for (var i = 0; i < COLUMNS.videos.length; i++) {
+    var v = normalize(row[COLUMNS.videos[i]]);
+    if (v && /^https?:\/\//i.test(v)) arr.push(v);
+  }
+  return arr;
+}
+
+// YouTube動画ID抽出 — 通常URL/短縮URL/embedURL対応
+function extractYouTubeId(url) {
+  if (!url) return null;
+  var patterns = [
+    /(?:youtube\.com\/watch\?(?:.*&)?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([A-Za-z0-9_-]{11})/,
+    /youtube\.com\/.*[?&]v=([A-Za-z0-9_-]{11})/
+  ];
+  for (var i = 0; i < patterns.length; i++) {
+    var m = url.match(patterns[i]);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+// URLからプラットフォーム判定（表示ラベル用）
+function detectVideoPlatform(url) {
+  if (extractYouTubeId(url)) return 'YouTube';
+  if (/vimeo\.com/i.test(url)) return 'Vimeo';
+  if (/nicovideo\.jp/i.test(url)) return 'ニコニコ';
+  if (/\.(mp3|wav|m4a|ogg)(\?|$)/i.test(url)) return 'Audio';
+  if (/\.(mp4|mov|webm)(\?|$)/i.test(url)) return 'Video';
+  try { return new URL(url).hostname.replace(/^www\./, ''); } catch (e) { return 'Link'; }
 }
 
 function isImageUrl(s) { return /^https?:\/\//i.test(s); }
@@ -439,6 +474,7 @@ function openDetail(r) {
     '<div class="detail-ensemble-line">'+el+'</div>' +
     '<h2 class="detail-title">'+(escapeHTML(r.title)||'—')+'</h2>' +
     buildGalleryHTML(r) +
+    buildVideosHTML(r) +
     (r.composer ? '<div class="detail-section"><div class="detail-section-label">作曲 Composer</div><p class="detail-person">'+escapeHTML(r.composer)+(cD?'<span class="detail-person-dates">'+escapeHTML(cD)+'</span>':'')+'</p></div>' : '') +
     (r.arranger ? '<div class="detail-section"><div class="detail-section-label">編曲 Arranger</div><p class="detail-person">'+escapeHTML(r.arranger)+(aD?'<span class="detail-person-dates">'+escapeHTML(aD)+'</span>':'')+'</p></div>' : '') +
     (mr.length ? '<div class="detail-section"><div class="detail-section-label">出版情報 Publication</div><dl class="detail-grid">'+mr.map(function(kv){return '<dt>'+kv[0]+'</dt><dd>'+kv[1]+'</dd>';}).join('')+'</dl></div>' : '') +
@@ -448,8 +484,9 @@ function openDetail(r) {
   $('#detail-overlay').hidden = false;
   document.body.style.overflow = 'hidden';
 
-  // ギャラリー初期化
+  // ギャラリー＆動画初期化
   initGallery(r);
+  initVideos(r);
 }
 
 // ---------- Gallery (multiple images) ---------------------------
@@ -544,6 +581,68 @@ function lightboxNext() {
   if (!n) return;
   lightboxState.index = (lightboxState.index + 1) % n;
   updateLightbox();
+}
+
+// ---------- Videos (hybrid: YouTube embed / 外部リンク) ---------
+function buildVideosHTML(r) {
+  var vids = r.videos || [];
+  if (!vids.length) return '';
+
+  var items = vids.map(function(url, i) {
+    var ytId = extractYouTubeId(url);
+    var platform = detectVideoPlatform(url);
+    var safeUrl = escapeHTML(url);
+
+    if (ytId) {
+      // YouTube: サムネ取得＋クリックで埋め込み再生
+      var thumb = 'https://img.youtube.com/vi/' + encodeURIComponent(ytId) + '/hqdefault.jpg';
+      return '<div class="video-item" data-yt="'+escapeHTML(ytId)+'" data-url="'+safeUrl+'" data-idx="'+i+'">' +
+             '<div class="video-thumb-wrap">' +
+               '<img class="video-thumb-img" src="'+escapeHTML(thumb)+'" alt="" loading="lazy">' +
+               '<span class="video-play-icon" aria-hidden="true"></span>' +
+               '<span class="video-platform">'+escapeHTML(platform)+'</span>' +
+             '</div>' +
+             '<div class="video-frame-slot"></div>' +
+             '</div>';
+    } else {
+      // YouTube以外: 外部リンクとして表示
+      return '<a class="video-item video-link" href="'+safeUrl+'" target="_blank" rel="noopener noreferrer">' +
+             '<div class="video-thumb-wrap video-thumb-link">' +
+               '<span class="video-link-icon" aria-hidden="true">↗</span>' +
+               '<span class="video-link-label">'+escapeHTML(platform)+' で開く</span>' +
+               '<span class="video-platform">'+escapeHTML(platform)+'</span>' +
+             '</div>' +
+             '<div class="video-link-url">'+safeUrl+'</div>' +
+             '</a>';
+    }
+  }).join('');
+
+  return '<div class="detail-section detail-videos">' +
+         '<div class="detail-section-label">演奏動画 Performance</div>' +
+         '<div class="video-list">' + items + '</div>' +
+         '</div>';
+}
+
+function initVideos(r) {
+  // YouTube サムネクリックで埋め込み再生に切替
+  $$('.video-item[data-yt]').forEach(function(item) {
+    var thumbWrap = item.querySelector('.video-thumb-wrap');
+    if (!thumbWrap) return;
+    thumbWrap.addEventListener('click', function() {
+      var ytId = item.getAttribute('data-yt');
+      if (!ytId) return;
+      // 既に再生中なら何もしない
+      if (item.classList.contains('is-playing')) return;
+      var iframe = document.createElement('iframe');
+      iframe.setAttribute('src', 'https://www.youtube.com/embed/' + encodeURIComponent(ytId) + '?autoplay=1&rel=0');
+      iframe.setAttribute('frameborder', '0');
+      iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture');
+      iframe.setAttribute('allowfullscreen', '');
+      iframe.setAttribute('title', 'YouTube video player');
+      thumbWrap.replaceWith(iframe);
+      item.classList.add('is-playing');
+    });
+  });
 }
 
 function closeDetail() {
