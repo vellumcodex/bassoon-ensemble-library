@@ -296,7 +296,7 @@ function bindEvents() {
   $('#detail-close').addEventListener('click', closeDetail);
   $('#detail-overlay').addEventListener('click', function(e){ if (e.target.id === 'detail-overlay') closeDetail(); });
 
-  // Lightbox
+  // Lightbox (image)
   $('#lightbox-close').addEventListener('click', closeLightbox);
   $('#lightbox-prev').addEventListener('click', function(e){ e.stopPropagation(); lightboxPrev(); });
   $('#lightbox-next').addEventListener('click', function(e){ e.stopPropagation(); lightboxNext(); });
@@ -304,7 +304,21 @@ function bindEvents() {
     if (e.target.id === 'lightbox-overlay' || e.target.classList.contains('lightbox-stage')) closeLightbox();
   });
 
+  // Video Lightbox
+  $('#video-lightbox-close').addEventListener('click', closeVideoLightbox);
+  $('#video-lightbox-prev').addEventListener('click', function(e){ e.stopPropagation(); videoLightboxPrev(); });
+  $('#video-lightbox-next').addEventListener('click', function(e){ e.stopPropagation(); videoLightboxNext(); });
+  $('#video-lightbox-overlay').addEventListener('click', function(e){
+    if (e.target.id === 'video-lightbox-overlay') closeVideoLightbox();
+  });
+
   document.addEventListener('keydown', function(e){
+    if (!$('#video-lightbox-overlay').hidden) {
+      if (e.key === 'Escape') closeVideoLightbox();
+      else if (e.key === 'ArrowLeft') videoLightboxPrev();
+      else if (e.key === 'ArrowRight') videoLightboxNext();
+      return;
+    }
     if (!$('#lightbox-overlay').hidden) {
       if (e.key === 'Escape') closeLightbox();
       else if (e.key === 'ArrowLeft') lightboxPrev();
@@ -583,7 +597,7 @@ function lightboxNext() {
   updateLightbox();
 }
 
-// ---------- Videos (hybrid: YouTube embed / 外部リンク) ---------
+// ---------- Videos (grid + lightbox) ----------------------------
 function buildVideosHTML(r) {
   var vids = r.videos || [];
   if (!vids.length) return '';
@@ -594,55 +608,96 @@ function buildVideosHTML(r) {
     var safeUrl = escapeHTML(url);
 
     if (ytId) {
-      // YouTube: サムネ取得＋クリックで埋め込み再生
       var thumb = 'https://img.youtube.com/vi/' + encodeURIComponent(ytId) + '/hqdefault.jpg';
-      return '<div class="video-item" data-yt="'+escapeHTML(ytId)+'" data-url="'+safeUrl+'" data-idx="'+i+'">' +
-             '<div class="video-thumb-wrap">' +
+      return '<button class="video-thumb" data-idx="'+i+'" type="button">' +
                '<img class="video-thumb-img" src="'+escapeHTML(thumb)+'" alt="" loading="lazy">' +
                '<span class="video-play-icon" aria-hidden="true"></span>' +
                '<span class="video-platform">'+escapeHTML(platform)+'</span>' +
-             '</div>' +
-             '<div class="video-frame-slot"></div>' +
-             '</div>';
+             '</button>';
     } else {
-      // YouTube以外: 外部リンクとして表示
-      return '<a class="video-item video-link" href="'+safeUrl+'" target="_blank" rel="noopener noreferrer">' +
-             '<div class="video-thumb-wrap video-thumb-link">' +
+      return '<button class="video-thumb video-thumb-link-style" data-idx="'+i+'" type="button">' +
                '<span class="video-link-icon" aria-hidden="true">↗</span>' +
-               '<span class="video-link-label">'+escapeHTML(platform)+' で開く</span>' +
                '<span class="video-platform">'+escapeHTML(platform)+'</span>' +
-             '</div>' +
-             '<div class="video-link-url">'+safeUrl+'</div>' +
-             '</a>';
+             '</button>';
     }
   }).join('');
 
   return '<div class="detail-section detail-videos">' +
          '<div class="detail-section-label">演奏動画 Performance</div>' +
-         '<div class="video-list">' + items + '</div>' +
+         '<div class="video-grid">' + items + '</div>' +
          '</div>';
 }
 
 function initVideos(r) {
-  // YouTube サムネクリックで埋め込み再生に切替
-  $$('.video-item[data-yt]').forEach(function(item) {
-    var thumbWrap = item.querySelector('.video-thumb-wrap');
-    if (!thumbWrap) return;
-    thumbWrap.addEventListener('click', function() {
-      var ytId = item.getAttribute('data-yt');
-      if (!ytId) return;
-      // 既に再生中なら何もしない
-      if (item.classList.contains('is-playing')) return;
-      var iframe = document.createElement('iframe');
-      iframe.setAttribute('src', 'https://www.youtube.com/embed/' + encodeURIComponent(ytId) + '?autoplay=1&rel=0');
-      iframe.setAttribute('frameborder', '0');
-      iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture');
-      iframe.setAttribute('allowfullscreen', '');
-      iframe.setAttribute('title', 'YouTube video player');
-      thumbWrap.replaceWith(iframe);
-      item.classList.add('is-playing');
+  var vids = r.videos || [];
+  $$('.video-thumb', $('#detail-body')).forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var idx = parseInt(btn.getAttribute('data-idx'), 10);
+      openVideoLightbox(vids, idx);
     });
   });
+}
+
+// 動画ライトボックス
+var videoLightboxState = { videos: [], index: 0 };
+
+function openVideoLightbox(videos, startIndex) {
+  videoLightboxState.videos = videos;
+  videoLightboxState.index = startIndex || 0;
+  updateVideoLightbox();
+  $('#video-lightbox-overlay').hidden = false;
+}
+
+function closeVideoLightbox() {
+  $('#video-lightbox-overlay').hidden = true;
+  // iframe を空にして再生を停止
+  $('#video-lightbox-stage').innerHTML = '';
+}
+
+function updateVideoLightbox() {
+  var vids = videoLightboxState.videos;
+  var i = videoLightboxState.index;
+  if (!vids.length) { closeVideoLightbox(); return; }
+
+  var url = vids[i];
+  var ytId = extractYouTubeId(url);
+  var platform = detectVideoPlatform(url);
+  var stage = $('#video-lightbox-stage');
+
+  if (ytId) {
+    stage.innerHTML = '<iframe class="video-lightbox-iframe" ' +
+                      'src="https://www.youtube.com/embed/' + encodeURIComponent(ytId) + '?autoplay=1&rel=0" ' +
+                      'frameborder="0" ' +
+                      'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" ' +
+                      'allowfullscreen ' +
+                      'title="YouTube video player"></iframe>';
+  } else {
+    stage.innerHTML = '<div class="video-lightbox-extlink">' +
+                      '<div class="video-lightbox-extlink-icon">↗</div>' +
+                      '<div class="video-lightbox-extlink-platform">' + escapeHTML(platform) + '</div>' +
+                      '<div class="video-lightbox-extlink-url">' + escapeHTML(url) + '</div>' +
+                      '<a href="' + escapeHTML(url) + '" target="_blank" rel="noopener noreferrer" class="video-lightbox-extlink-btn">外部サイトで開く →</a>' +
+                      '</div>';
+  }
+
+  $('#video-lightbox-counter').textContent = (i+1) + ' / ' + vids.length;
+  var multi = vids.length > 1;
+  $('#video-lightbox-prev').hidden = !multi;
+  $('#video-lightbox-next').hidden = !multi;
+}
+
+function videoLightboxPrev() {
+  var n = videoLightboxState.videos.length;
+  if (!n) return;
+  videoLightboxState.index = (videoLightboxState.index - 1 + n) % n;
+  updateVideoLightbox();
+}
+
+function videoLightboxNext() {
+  var n = videoLightboxState.videos.length;
+  if (!n) return;
+  videoLightboxState.index = (videoLightboxState.index + 1) % n;
+  updateVideoLightbox();
 }
 
 function closeDetail() {
