@@ -32,8 +32,8 @@ var COLUMNS = {
   description: '説明',
   program: '曲目',
   skill: 'スキルレベル',
-  // 画像列は 画像1〜画像10。旧「画像」列も後方互換でフォールバック取得する
-  images: ['画像1','画像2','画像3','画像4','画像5','画像6','画像7','画像8','画像9','画像10'],
+  // 画像列は 画像1〜画像12。旧「画像」列も後方互換でフォールバック取得する
+  images: ['画像1','画像2','画像3','画像4','画像5','画像6','画像7','画像8','画像9','画像10','画像11','画像12'],
   // 動画列は 動画1〜動画5
   videos: ['動画1','動画2','動画3','動画4','動画5']
 };
@@ -173,6 +173,45 @@ function extractYouTubeId(url) {
   return null;
 }
 
+// YouTube開始時間抽出 — t=42, t=42s, t=1m30s, t=1h2m3s, start=42 すべて対応
+// 戻り値: 秒数（整数）または 0
+function extractYouTubeStart(url) {
+  if (!url) return 0;
+  // start= か t= パラメータを取り出す
+  var m = url.match(/[?&](?:t|start)=([^&#]+)/);
+  if (!m) return 0;
+  var raw = m[1];
+  // 純粋な数字（秒）
+  if (/^\d+$/.test(raw)) return parseInt(raw, 10);
+  // 1h2m3s / 1m30s / 30s 形式
+  var hms = raw.match(/(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?/);
+  if (hms) {
+    var h = parseInt(hms[1] || '0', 10);
+    var mn = parseInt(hms[2] || '0', 10);
+    var s = parseInt(hms[3] || '0', 10);
+    var total = h * 3600 + mn * 60 + s;
+    if (total > 0) return total;
+  }
+  return 0;
+}
+
+// YouTube開始時間抽出（秒数を返す）
+// 対応: ?t=42, ?t=42s, ?t=1m30s, ?t=1h2m30s, ?start=42
+function parseYouTubeStart(url) {
+  if (!url) return 0;
+  var m = url.match(/[?&](?:t|start)=([^&#]+)/);
+  if (!m) return 0;
+  var v = m[1];
+  // 純粋な秒数（"42" or "42s"）
+  if (/^\d+s?$/.test(v)) return parseInt(v, 10) || 0;
+  // 1h2m30s 形式
+  var h = (v.match(/(\d+)h/) || [])[1];
+  var min = (v.match(/(\d+)m/) || [])[1];
+  var s = (v.match(/(\d+)s/) || [])[1];
+  var total = (parseInt(h||0,10)*3600) + (parseInt(min||0,10)*60) + parseInt(s||0,10);
+  return total > 0 ? total : 0;
+}
+
 // URLからプラットフォーム判定（表示ラベル用）
 function detectVideoPlatform(url) {
   if (extractYouTubeId(url)) return 'YouTube';
@@ -283,13 +322,15 @@ function bindEvents() {
 
   $('#clear-filters').addEventListener('click', clearAllFilters);
 
-  // 見出しクリックで折りたたみ切替
+  // 見出しクリックで折りたたみ切替（初期値は全て閉じた状態）
   $$('.filter-section h3').forEach(function(h3) {
+    var section = h3.closest('.filter-section');
+    if (section) section.classList.add('collapsed');
     h3.addEventListener('click', function(e) {
       // i ボタンクリック時は折りたたまない
       if (e.target.closest('[data-skill-info]')) return;
-      var section = h3.closest('.filter-section');
-      if (section) section.classList.toggle('collapsed');
+      var sec = h3.closest('.filter-section');
+      if (sec) sec.classList.toggle('collapsed');
     });
   });
 
@@ -665,8 +706,11 @@ function updateVideoLightbox() {
   var stage = $('#video-lightbox-stage');
 
   if (ytId) {
+    var startSec = extractYouTubeStart(url);
+    var embedUrl = 'https://www.youtube.com/embed/' + encodeURIComponent(ytId) + '?autoplay=1&rel=0';
+    if (startSec > 0) embedUrl += '&start=' + startSec;
     stage.innerHTML = '<iframe class="video-lightbox-iframe" ' +
-                      'src="https://www.youtube.com/embed/' + encodeURIComponent(ytId) + '?autoplay=1&rel=0" ' +
+                      'src="' + embedUrl + '" ' +
                       'frameborder="0" ' +
                       'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" ' +
                       'allowfullscreen ' +
