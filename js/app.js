@@ -322,10 +322,13 @@ function bindEvents() {
 
   $('#clear-filters').addEventListener('click', clearAllFilters);
 
-  // 見出しクリックで折りたたみ切替（初期値は全て閉じた状態）
+  // 見出しクリックで折りたたみ切替（人数以外は初期で閉じる）
   $$('.filter-section h3').forEach(function(h3) {
     var section = h3.closest('.filter-section');
-    if (section) section.classList.add('collapsed');
+    // 人数(#filter-players)を含むセクションは開いたまま、それ以外は閉じる
+    if (section && !section.querySelector('#filter-players')) {
+      section.classList.add('collapsed');
+    }
     h3.addEventListener('click', function(e) {
       // i ボタンクリック時は折りたたまない
       if (e.target.closest('[data-skill-info]')) return;
